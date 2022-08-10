@@ -11,11 +11,11 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
 np.set_printoptions(precision=3, suppress=True)
 
 import tensorflow as tf
+from matplotlib import pyplot
 from tensorflow import keras
 from tensorflow.keras import layers
-from scikeras.wrappers import KerasClassifier
+from scikeras.wrappers import KerasRegressor
 from sklearn.model_selection import GridSearchCV
-
 
 job_column_names = ['job_id', 'tpch_query_id', 'polling_strategy', 'number_of_jobs', 'job_number_j',
                     'prev_job_bytes_written', 'splits', 'split_size', 'map_bin_size',
@@ -29,12 +29,12 @@ task_column_names = ['r_id', 'job_id', 'task_id', 'runtime_id', 'phase',
                      'number_of_premature_polls', 'completed', 'failed', 'function_execution_start',
                      'function_execution_end', 'final_poll_time']
 
-tasks = pd.read_csv('C:/Users/tgold/Documents/Studium/BA/Tensorflow/PollingPrediction/taskLog.csv',
+tasks = pd.read_csv('./taskLog.csv',
                     names=task_column_names,
                     na_values='?', comment='\t', quotechar='"', skiprows=1,
                     sep=',', skipinitialspace=True, low_memory=False)
 
-jobs = pd.read_csv('C:/Users/tgold/Documents/Studium/BA/Tensorflow/PollingPrediction/jobLog.csv',
+jobs = pd.read_csv('./jobLog.csv',
                    names=job_column_names,
                    na_values='?', comment='\t', quotechar='"', skiprows=1,
                    sep=',', skipinitialspace=True, low_memory=False)
@@ -58,7 +58,7 @@ raw_dataset = raw_dataset.drop(
 dataset = raw_dataset.copy()
 dataset = dataset.dropna()
 
-dataset['total_execution_time'] = round(dataset['total_execution_time']/1000000000, 0)
+dataset['total_execution_time'] = round(dataset['total_execution_time'] / 1000000000, 0)
 
 # convert categorical variables
 dataset['map_complexity'] = dataset['map_complexity'].map({'1': 'MC_Eeasy', '2': 'MC_Medium', '3': 'MC_High'})
@@ -69,8 +69,14 @@ dataset = pd.get_dummies(dataset, columns=['map_complexity'], dtype=int, prefix=
 dataset = pd.get_dummies(dataset, columns=['reduce_complexity'], dtype=int, prefix='', prefix_sep='')
 dataset = pd.get_dummies(dataset, columns=['phase'], dtype=int, prefix='', prefix_sep='')
 
-#shuffle
+# drop na values
+dataset = dataset.dropna()
+
+# shuffle
 dataset = dataset.sample(frac=1)
+
+print("Raw training data:")
+print(dataset.tail())
 
 X = dataset.copy().drop(['total_execution_time'], axis=1)
 y = dataset['total_execution_time']
@@ -79,42 +85,52 @@ y = dataset['total_execution_time']
 normalizer = tf.keras.layers.Normalization(axis=-1)
 normalizer.adapt(X)
 
-#split data
-X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X, y, test_size=0.8, random_state=123, stratify=y)
+# split data
+X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X, y, test_size=0.2, random_state=123,
+                                                                            stratify=y)
+
+from datetime import datetime
+
+now = datetime.now()
+
+current_time = now.strftime("%H:%M:%S")
+print("Current Time =", current_time)
 
 # fix random seed for reproducibility
-seed = 7
-tf.random.set_seed(seed)
-
+# seed = 7
+# tf.random.set_seed(seed)
 
 # Build model
-def create_model(optimizer='adam', activation='relu'):
-    model = keras.Sequential([
-        normalizer,
-        layers.Dense(64, activation=activation),
-        layers.Dense(64, activation='relu'),
-        layers.Dense(1)
-    ])
+def create_model(learning_rate=0.001, activation='relu', nodes1=128, nodes2=160, nodes3=64):  # optimizer='adam' layers=2,
+    model = tf.keras.Sequential([normalizer])
 
-    model.compile(loss='mean_absolute_error', metrics=['accuracy'], optimizer=optimizer)
+    model.add(tf.keras.layers.Dense(nodes1, activation=activation))
+    model.add(tf.keras.layers.Dense(nodes2, activation=activation))
+    model.add(tf.keras.layers.Dense(nodes3, activation=activation))
+
+    model.add(tf.keras.layers.Dense(1))
+
+    model.compile(loss='mean_squared_logarithmic_error', optimizer=tf.keras.optimizers.Adam(learning_rate))
+
+    model.summary()
+
     return model
 
-dnn_model = KerasClassifier(model=create_model, verbose=1, loss='mean_absolute_error') #, optimizer=tf.keras.optimizers.Adam(0.001))
+dnn_model=create_model()
 
-# define the dictionary that is used for the grid search
-batch_size = [10]
-epochs = [300]
-optimizer = ['SGD'] #, 'RMSprop', 'Adagrad', 'Adadelta', 'Adam', 'Adamax', 'Nadam']
-activation = ['softmax', 'linear'] #'softplus', 'softsign', 'sigmoid', 'hard_sigmoid', 'relu', 'tanh',
-param_grid = dict(model__optimizer=optimizer, model__activation=activation, epochs=epochs, batch_size=batch_size) #model__optimizer=optimizer, batch_size=batch_size, model__activation=activation
+history=dnn_model.fit(X_train, y_train, validation_data=(X_test, y_test), epochs=50, verbose=0)
 
-grid = GridSearchCV(estimator=dnn_model, param_grid=param_grid, n_jobs=1, cv=3)
-grid_result = grid.fit(X_train, y_train)
+now = datetime.now()
 
-# summarize results
-print("Best: %f using %s" % (grid_result.best_score_, grid_result.best_params_))
-means = grid_result.cv_results_['mean_test_score']
-stds = grid_result.cv_results_['std_test_score']
-params = grid_result.cv_results_['params']
-for mean, stdev, param in zip(means, stds, params):
-    print("%f (%f) with: %r" % (mean, stdev, param))
+current_time = now.strftime("%H:%M:%S")
+print("Current Time =", current_time)
+
+# plot loss during training
+pyplot.title('Loss / Mean Squared Logarithmic Error')
+pyplot.plot(history.history['loss'], label='train')
+pyplot.plot(history.history['val_loss'], label='test')
+pyplot.legend()
+pyplot.show()
+
+#save the model
+#dnn_model.save('dnn_model')
