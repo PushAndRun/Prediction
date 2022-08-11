@@ -126,15 +126,15 @@ dnn_model = KerasRegressor(build_fn=create_model, verbose=1, loss="mean_squared_
 batch_size = [10]
 epochs = [10]
 # layers = [3]
-nodes1 = [64, 128, 192]
-nodes2 = [64, 128, 192]
-nodes3 = [64, 128, 192]
-learning_rate = [0.001]
+nodes1 = [128]
+nodes2 = [256]
+nodes3 = [256]
+learning_rate = [0.0001, 0.001, 0.01, 0.1]
 #momentum = [0.0, 0.4, 0.8]
-optimizer = ['Adam']  # ,'Adagrad']  # , 'RMSprop', 'Adagrad', 'Adadelta', 'Adam', 'Adamax', 'Nadam']
-activation1 = ['relu']  # ,'linear']  # 'sigmoid', 'hard_sigmoid', 'softplus', 'softmax', 'softplus', 'softmax', 'softsign', 'sigmoid', 'hard_sigmoid', 'relu', 'tanh', 'linear','tanh', 'softplus'
-activation2 = ['relu']  # , 'linear']
-activation3 = ['relu']  # , 'linear']
+optimizer = ['Adam']  # ,'Adagrad', 'RMSprop', 'Adagrad', 'Adadelta', 'Adam', 'Adamax', 'Nadam']
+activation1 = ['relu']  # ,'sigmoid','tanh', 'linear', 'sigmoid', 'hard_sigmoid', 'softplus', 'softmax', 'softplus', 'softmax', 'softsign', 'sigmoid', 'hard_sigmoid', 'relu', 'tanh', 'linear','tanh', 'softplus'
+activation2 = ['relu']
+activation3 = ['relu']
 
 param_grid = dict(model__activation1=activation1, model__activation2=activation2, model__activation3=activation3,
                   model__nodes1=nodes1, model__nodes2=nodes2, model__nodes3=nodes3, epochs=epochs,

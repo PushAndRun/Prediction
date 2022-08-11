@@ -1,10 +1,12 @@
-from datetime import time
+from copy import deepcopy
 
 import numpy as np
 import pandas as pd
 import os
 
 import sklearn
+from keras.dtensor.integration_test_utils import train_step
+from matplotlib import pyplot as plt
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
 
@@ -82,7 +84,6 @@ dataset = dataset.sample(frac=1)
 X = dataset.copy().drop(['total_execution_time'], axis=1)
 y = dataset['total_execution_time']
 
-columns = list(dataset.columns)
 
 scaler = MinMaxScaler()
 # fit scaler on data
@@ -90,64 +91,93 @@ scaler.fit(dataset)
 # apply transform
 dataset = scaler.transform(dataset)
 
-dataset = pd.DataFrame(dataset, columns=columns)
-print(dataset.tail())
-
-# Normalize and create normalize layer
-normalizerX = tf.keras.layers.Normalization(axis=-1)
-normalizerX.adapt(X)
-
-
 print(X.tail())
 
 # split data
 X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X, y, test_size=0.2, random_state=123,
                                                                             stratify=y)
 
-# fix random seed for reproducibility
-# seed = 7
-# tf.random.set_seed(seed)
+flipped_x = deepcopy(X_train)
+flipped_y = deepcopy(y_train)
 
-# Build model
-def create_model():
-    model = tf.keras.Sequential([
-    normalizerX,
-    layers.Dense(units=1)])
+N = flipped_x.shape[0]
+dataset = tf.data.Dataset \
+    .from_tensor_slices((flipped_x, flipped_y)) \
+    .shuffle(N).batch(N)
 
-    return model
+# In our toy example, we have single input feature
+l = 9
+# Number of gaussians to represent the multimodal distribution
+k = 26
+
+# Network
+input = tf.keras.Input(shape=(l,))
+layer = tf.keras.layers.Dense(50, activation='tanh', name='baselayer')(input)
+mu = tf.keras.layers.Dense((l * k), activation=None, name='mean_layer')(layer)
+# variance (should be greater than 0 so we exponentiate it)
+var_layer = tf.keras.layers.Dense(k, activation=None, name='dense_var_layer')(layer)
+var = tf.keras.layers.Lambda(lambda x: tf.math.exp(x), output_shape=(k,), name='variance_layer')(var_layer)
+# mixing coefficient should sum to 1.0
+pi = tf.keras.layers.Dense(k, activation='softmax', name='pi_layer')(layer)
+
+model = tf.keras.models.Model(input, [pi, mu, var])
+optimizer = tf.keras.optimizers.Adam()
+model.summary()
+
+# Take a note how easy it is to write the loss function in
+# new tensorflow eager mode (debugging the function becomes intuitive too)
+
+def calc_pdf(y, mu, var):
+    """Calculate component density"""
+    value = tf.subtract(y, mu)**2
+    value = (1/tf.math.sqrt(2 * np.pi * var)) * tf.math.exp((-1/(2*var)) * value)
+    return value
+
+def mdn_loss(y_true, pi, mu, var):
+    """MDN Loss Function
+    The eager mode in tensorflow 2.0 makes is extremely easy to write
+    functions like these. It feels a lot more pythonic to me.
+    """
+    out = calc_pdf(y_true, mu, var)
+    # multiply with each pi and sum it
+    out = tf.multiply(out, pi)
+    out = tf.reduce_sum(out, 1, keepdims=True)
+    out = -tf.math.log(out + 1e-10)
+    return tf.reduce_mean(out)
+
+@tf.function
+def train_step(model, optimizer, train_x, train_y):
+    # GradientTape: Trace operations to compute gradients
+    with tf.GradientTape() as tape:
+        pi_, mu_, var_ = model(train_x, training=True)
+        # calculate loss
+        loss = mdn_loss(train_y, pi_, mu_, var_)
+    # compute and apply gradients
+    gradients = tape.gradient(loss, model.trainable_variables)
+    optimizer.apply_gradients(zip(gradients, model.trainable_variables))
+    return loss
+
+losses = []
+EPOCHS = 10
+print_every = int(0.1 * EPOCHS)
+
+# Define model and optimizer
+model = tf.keras.models.Model(input, [pi, mu, var])
+optimizer = tf.keras.optimizers.Adam()
+
+# Start training
+print('Print every {} epochs'.format(print_every))
+for i in range(EPOCHS):
+    for train_x, train_y in dataset:
+        loss = train_step(model, optimizer, train_x, train_y)
+        losses.append(loss)
+    if i % print_every == 0:
+        print('Epoch {}/{}: loss {}'.format(i, EPOCHS, losses[-1]))
 
 
-dnn_model = KerasRegressor(build_fn=create_model, verbose=1, loss="mean_squared_logarithmic_error", metrics=["mean_absolute_error", 'mean_squared_error'])  # , optimizer=tf.keras.optimizers.Adam(0.001))
-
-# define the dictionary that is used for the grid search
-batch_size = [10]
-epochs = [10]
-# layers = [3]
-#nodes1 = [64, 128, 192]
-#nodes2 = [64, 128, 192]
-#nodes3 = [64, 128, 192]
-learning_rate = [0.001]
-#momentum = [0.0, 0.4, 0.8]
-optimizer = ['Adam','Adagrad', 'RMSprop', 'Adagrad', 'Adadelta', 'Adam', 'Adamax', 'Nadam']
-#activation1 = ['relu']  # ,'linear']  # 'sigmoid', 'hard_sigmoid', 'softplus', 'softmax', 'softplus', 'softmax', 'softsign', 'sigmoid', 'hard_sigmoid', 'relu', 'tanh', 'linear','tanh', 'softplus'
-#activation2 = ['relu']  # , 'linear']
-#activation3 = ['relu']  # , 'linear']
-
-param_grid = dict(epochs=epochs,
-                  batch_size=batch_size, optimizer=optimizer, optimizer__learning_rate=learning_rate)
-
-grid = GridSearchCV(estimator=dnn_model, param_grid=param_grid, n_jobs=1, cv=3, scoring='neg_mean_absolute_error')
-grid_result = grid.fit(X_train, y_train)
-
-# summarize results
-print("Best: %f using %s" % (grid_result.best_score_, grid_result.best_params_))
-means = grid_result.cv_results_['mean_test_score']
-stds = grid_result.cv_results_['std_test_score']
-params = grid_result.cv_results_['params']
-for mean, stdev, param in zip(means, stds, params):
-    print("%f (%f) with: %r" % (mean, stdev, param))
-
-best_model = grid_result.best_estimator_
-best_model.set_params(loss='mean_squared_error')
-print("Tested metrics of best model: %f" % (best_model.score(X_test, y_test)))
-
+# Let's plot the training loss
+plt.plot(range(len(losses)), losses)
+plt.xlabel('Epochs')
+plt.ylabel('Loss')
+plt.title('Training loss')
+plt.show()
