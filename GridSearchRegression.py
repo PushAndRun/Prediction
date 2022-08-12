@@ -55,7 +55,7 @@ raw_dataset = raw_dataset.drop(
      'function_start_latency',
      'function_execution_duration', 'poll_latency', 'number_of_premature_polls', 'function_execution_start',
      'function_execution_end', 'final_poll_time', 'completed', 'failed', 'tpch_query_id', 'polling_strategy', 'backend',
-     'cache_type', 'job_execution_time', 'experiment_note'], axis=1)
+     'cache_type', 'job_execution_time', 'experiment_note', 'map_complexity', 'reduce_complexity'], axis=1)
 
 dataset = raw_dataset.copy()
 dataset = dataset.dropna()
@@ -63,12 +63,12 @@ dataset = dataset.dropna()
 dataset['total_execution_time'] = round(dataset['total_execution_time'] / 1000000000, 0)
 
 # convert categorical variables
-dataset['map_complexity'] = dataset['map_complexity'].map({'1': 'MC_Eeasy', '2': 'MC_Medium', '3': 'MC_High'})
-dataset['reduce_complexity'] = dataset['reduce_complexity'].map({'1': 'RC_Eeasy', '2': 'RC_Medium', '3': 'RC_High'})
+#dataset['map_complexity'] = dataset['map_complexity'].map({'1': 'MC_Eeasy', '2': 'MC_Medium', '3': 'MC_High'})
+#dataset['reduce_complexity'] = dataset['reduce_complexity'].map({'1': 'RC_Eeasy', '2': 'RC_Medium', '3': 'RC_High'})
 dataset['phase'] = dataset['phase'].map({'0': 'Map', '1': 'Reduce'})
 
-dataset = pd.get_dummies(dataset, columns=['map_complexity'], dtype=int, prefix='', prefix_sep='')
-dataset = pd.get_dummies(dataset, columns=['reduce_complexity'], dtype=int, prefix='', prefix_sep='')
+#dataset = pd.get_dummies(dataset, columns=['map_complexity'], dtype=int, prefix='', prefix_sep='')
+#dataset = pd.get_dummies(dataset, columns=['reduce_complexity'], dtype=int, prefix='', prefix_sep='')
 dataset = pd.get_dummies(dataset, columns=['phase'], dtype=int, prefix='', prefix_sep='')
 
 # drop na values
@@ -81,17 +81,6 @@ dataset = dataset.sample(frac=1)
 
 X = dataset.copy().drop(['total_execution_time'], axis=1)
 y = dataset['total_execution_time']
-
-columns = list(dataset.columns)
-
-scaler = MinMaxScaler()
-# fit scaler on data
-scaler.fit(dataset)
-# apply transform
-dataset = scaler.transform(dataset)
-
-dataset = pd.DataFrame(dataset, columns=columns)
-print(dataset.tail())
 
 # Normalize and create normalize layer
 normalizerX = tf.keras.layers.Normalization(axis=-1)
@@ -109,15 +98,15 @@ X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X, y
 # tf.random.set_seed(seed)
 
 # Build model
-def create_model():
+def create_model(activation1 = 'linear'):
     model = tf.keras.Sequential([
     normalizerX,
-    layers.Dense(units=1)])
+    layers.Dense(units=1, activation=activation1)])
 
     return model
 
 
-dnn_model = KerasRegressor(build_fn=create_model, verbose=1, loss="mean_squared_logarithmic_error", metrics=["mean_absolute_error", 'mean_squared_error'])  # , optimizer=tf.keras.optimizers.Adam(0.001))
+dnn_model = KerasRegressor(build_fn=create_model, verbose=1, loss="mean_absolute_error", metrics=["mean_absolute_error", 'mean_squared_error'])  # , optimizer=tf.keras.optimizers.Adam(0.001))
 
 # define the dictionary that is used for the grid search
 batch_size = [10]
@@ -126,15 +115,15 @@ epochs = [10]
 #nodes1 = [64, 128, 192]
 #nodes2 = [64, 128, 192]
 #nodes3 = [64, 128, 192]
-learning_rate = [0.001]
+learning_rate = [0.1]
 #momentum = [0.0, 0.4, 0.8]
-optimizer = ['Adam','Adagrad', 'RMSprop', 'Adagrad', 'Adadelta', 'Adam', 'Adamax', 'Nadam']
-#activation1 = ['relu']  # ,'linear']  # 'sigmoid', 'hard_sigmoid', 'softplus', 'softmax', 'softplus', 'softmax', 'softsign', 'sigmoid', 'hard_sigmoid', 'relu', 'tanh', 'linear','tanh', 'softplus'
+optimizer = ['RMSprop'] #'Adam','Adagrad', 'Adagrad', 'Adadelta', 'Adam', 'Adamax', 'Nadam'
+activation1 = ['relu']#,'linear', 'sigmoid']  # 'sigmoid', 'hard_sigmoid', 'softplus', 'softmax', 'softplus', 'softmax', 'softsign', 'sigmoid', 'hard_sigmoid', 'relu', 'tanh', 'linear','tanh', 'softplus'
 #activation2 = ['relu']  # , 'linear']
 #activation3 = ['relu']  # , 'linear']
 
 param_grid = dict(epochs=epochs,
-                  batch_size=batch_size, optimizer=optimizer, optimizer__learning_rate=learning_rate)
+                  batch_size=batch_size, optimizer=optimizer, optimizer__learning_rate=learning_rate, model__activation1=activation1)
 
 grid = GridSearchCV(estimator=dnn_model, param_grid=param_grid, n_jobs=1, cv=3, scoring='neg_mean_absolute_error')
 grid_result = grid.fit(X_train, y_train)

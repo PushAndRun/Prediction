@@ -92,3 +92,21 @@ Best: -9.302001 using {'batch_size': 10, 'epochs': 10, 'model__activation1': 're
 -9.541973 (0.204961) with: {'batch_size': 10, 'epochs': 10, 'model__activation1': 'linear', 'model__activation2': 'relu', 'model__activation3': 'relu', 'model__nodes1': 128, 'model__nodes2': 256, 'model__nodes3': 256, 'optimizer': 'Adam', 'optimizer__learning_rate': 0.001}
 736/736 [==============================] - 1s 887us/step
 Tested metrics of best model: 0.752174
+
+Best: -9.196236 using {'batch_size': 10, 'epochs': 10, 'model__activation1': 'relu', 'model__activation2': 'relu', 'model__activation3': 'relu', 'model__init_mode': 'lecun_uniform', 'model__nodes1': 128, 'model__nodes2': 256, 'model__nodes3': 256, 'optimizer': 'Adam', 'optimizer__learning_rate': 0.001}
+-9.782195 (0.591172) with: {'batch_size': 10, 'epochs': 10, 'model__activation1': 'relu', 'model__activation2': 'relu', 'model__activation3': 'relu', 'model__init_mode': 'uniform', 'model__nodes1': 128, 'model__nodes2': 256, 'model__nodes3': 256, 'optimizer': 'Adam', 'optimizer__learning_rate': 0.001}
+-9.196236 (0.245093) with: {'batch_size': 10, 'epochs': 10, 'model__activation1': 'relu', 'model__activation2': 'relu', 'model__activation3': 'relu', 'model__init_mode': 'lecun_uniform', 'model__nodes1': 128, 'model__nodes2': 256, 'model__nodes3': 256, 'optimizer': 'Adam', 'optimizer__learning_rate': 0.001}
+-9.527895 (0.351533) with: {'batch_size': 10, 'epochs': 10, 'model__activation1': 'relu', 'model__activation2': 'relu', 'model__activation3': 'relu', 'model__init_mode': 'normal', 'model__nodes1': 128, 'model__nodes2': 256, 'model__nodes3': 256, 'optimizer': 'Adam', 'optimizer__learning_rate': 0.001}
+-26.338559 (0.231235) with: {'batch_size': 10, 'epochs': 10, 'model__activation1': 'relu', 'model__activation2': 'relu', 'model__activation3': 'relu', 'model__init_mode': 'zero', 'model__nodes1': 128, 'model__nodes2': 256, 'model__nodes3': 256, 'optimizer': 'Adam', 'optimizer__learning_rate': 0.001}
+-9.202442 (0.202356) with: {'batch_size': 10, 'epochs': 10, 'model__activation1': 'relu', 'model__activation2': 'relu', 'model__activation3': 'relu', 'model__init_mode': 'glorot_normal', 'model__nodes1': 128, 'model__nodes2': 256, 'model__nodes3': 256, 'optimizer': 'Adam', 'optimizer__learning_rate': 0.001}
+-9.210814 (0.109658) with: {'batch_size': 10, 'epochs': 10, 'model__activation1': 'relu', 'model__activation2': 'relu', 'model__activation3': 'relu', 'model__init_mode': 'glorot_uniform', 'model__nodes1': 128, 'model__nodes2': 256, 'model__nodes3': 256, 'optimizer': 'Adam', 'optimizer__learning_rate': 0.001}
+-21.376966 (17.354741) with: {'batch_size': 10, 'epochs': 10, 'model__activation1': 'relu', 'model__activation2': 'relu', 'model__activation3': 'relu', 'model__init_mode': 'he_normal', 'model__nodes1': 128, 'model__nodes2': 256, 'model__nodes3': 256, 'optimizer': 'Adam', 'optimizer__learning_rate': 0.001}
+-9.222765 (0.183327) with: {'batch_size': 10, 'epochs': 10, 'model__activation1': 'relu', 'model__activation2': 'relu', 'model__activation3': 'relu', 'model__init_mode': 'he_uniform', 'model__nodes1': 128, 'model__nodes2': 256, 'model__nodes3': 256, 'optimizer': 'Adam', 'optimizer__learning_rate': 0.001}
+736/736 [==============================] - 1s 1ms/step
+Tested metrics of best model: 0.741104
+
+Without Complexity
+Best: -15.041379 using {'batch_size': 10, 'epochs': 10, 'model__activation1': 'relu', 'model__activation2': 'relu', 'model__activation3': 'relu', 'model__init_mode': 'lecun_uniform', 'model__nodes1': 128, 'model__nodes2': 256, 'model__nodes3': 256, 'optimizer': 'Adam', 'optimizer__learning_rate': 0.001}
+-15.041379 (8.182612) with: {'batch_size': 10, 'epochs': 10, 'model__activation1': 'relu', 'model__activation2': 'relu', 'model__activation3': 'relu', 'model__init_mode': 'lecun_uniform', 'model__nodes1': 128, 'model__nodes2': 256, 'model__nodes3': 256, 'optimizer': 'Adam', 'optimizer__learning_rate': 0.001}
+736/736 [==============================] - 1s 789us/step
+Tested metrics of best model: 0.762827

@@ -5,6 +5,8 @@ import pandas as pd
 import os
 
 import sklearn
+from matplotlib import pyplot as plt
+from pandas.plotting._matplotlib import scatter_matrix
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
 
@@ -55,7 +57,7 @@ raw_dataset = raw_dataset.drop(
      'function_start_latency',
      'function_execution_duration', 'poll_latency', 'number_of_premature_polls', 'function_execution_start',
      'function_execution_end', 'final_poll_time', 'completed', 'failed', 'tpch_query_id', 'polling_strategy', 'backend',
-     'cache_type', 'job_execution_time', 'experiment_note'], axis=1)
+     'cache_type', 'job_execution_time', 'experiment_note', 'map_complexity', 'reduce_complexity'], axis=1)
 
 dataset = raw_dataset.copy()
 dataset = dataset.dropna()
@@ -63,12 +65,12 @@ dataset = dataset.dropna()
 dataset['total_execution_time'] = round(dataset['total_execution_time'] / 1000000000, 0)
 
 # convert categorical variables
-dataset['map_complexity'] = dataset['map_complexity'].map({'1': 'MC_Eeasy', '2': 'MC_Medium', '3': 'MC_High'})
-dataset['reduce_complexity'] = dataset['reduce_complexity'].map({'1': 'RC_Eeasy', '2': 'RC_Medium', '3': 'RC_High'})
+#dataset['map_complexity'] = dataset['map_complexity'].map({'1': 'MC_Eeasy', '2': 'MC_Medium', '3': 'MC_High'})
+#dataset['reduce_complexity'] = dataset['reduce_complexity'].map({'1': 'RC_Eeasy', '2': 'RC_Medium', '3': 'RC_High'})
 dataset['phase'] = dataset['phase'].map({'0': 'Map', '1': 'Reduce'})
 
-dataset = pd.get_dummies(dataset, columns=['map_complexity'], dtype=int, prefix='', prefix_sep='')
-dataset = pd.get_dummies(dataset, columns=['reduce_complexity'], dtype=int, prefix='', prefix_sep='')
+#dataset = pd.get_dummies(dataset, columns=['map_complexity'], dtype=int, prefix='', prefix_sep='')
+#dataset = pd.get_dummies(dataset, columns=['reduce_complexity'], dtype=int, prefix='', prefix_sep='')
 dataset = pd.get_dummies(dataset, columns=['phase'], dtype=int, prefix='', prefix_sep='')
 
 # drop na values
@@ -78,6 +80,9 @@ dataset = dataset.dropna()
 dataset = dataset.sample(frac=1)
 dataset = dataset.sample(frac=1)
 dataset = dataset.sample(frac=1)
+
+scatter_matrix(dataset, alpha=0.2, figsize=(15, 15), diagonal='hist')
+plt.show(block=True)
 
 X = dataset.copy().drop(['total_execution_time'], axis=1)
 y = dataset['total_execution_time']
@@ -109,11 +114,11 @@ X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X, y
 # tf.random.set_seed(seed)
 
 # Build model
-def create_model(nodes1=64, nodes2=64, nodes3=64, activation1='relu', activation2='relu', activation3='relu'):
+def create_model(nodes1=64, nodes2=64, nodes3=64, activation1='relu', activation2='relu', activation3='relu', init_mode='uniform'):
     model = tf.keras.Sequential([normalizerX])
-    model.add(tf.keras.layers.Dense(nodes1, activation=activation1)) #input_dim=9
-    model.add(tf.keras.layers.Dense(nodes2, activation=activation2))
-    model.add(tf.keras.layers.Dense(nodes3, activation=activation3))
+    model.add(tf.keras.layers.Dense(nodes1, activation=activation1, kernel_initializer=init_mode)) #input_dim=9
+    model.add(tf.keras.layers.Dense(nodes2, activation=activation2, kernel_initializer=init_mode))
+    model.add(tf.keras.layers.Dense(nodes3, activation=activation3, kernel_initializer=init_mode))
 
     model.add(tf.keras.layers.Dense(1))
 
@@ -129,14 +134,15 @@ epochs = [10]
 nodes1 = [128]
 nodes2 = [256]
 nodes3 = [256]
-learning_rate = [0.0001, 0.001, 0.01, 0.1]
+learning_rate = [0.001]
 #momentum = [0.0, 0.4, 0.8]
 optimizer = ['Adam']  # ,'Adagrad', 'RMSprop', 'Adagrad', 'Adadelta', 'Adam', 'Adamax', 'Nadam']
 activation1 = ['relu']  # ,'sigmoid','tanh', 'linear', 'sigmoid', 'hard_sigmoid', 'softplus', 'softmax', 'softplus', 'softmax', 'softsign', 'sigmoid', 'hard_sigmoid', 'relu', 'tanh', 'linear','tanh', 'softplus'
 activation2 = ['relu']
 activation3 = ['relu']
+init_mode = ['lecun_uniform'] #['uniform', 'lecun_uniform', 'normal', 'zero', 'glorot_normal', 'glorot_uniform', 'he_normal', 'he_uniform']
 
-param_grid = dict(model__activation1=activation1, model__activation2=activation2, model__activation3=activation3,
+param_grid = dict(model__activation1=activation1, model__activation2=activation2, model__activation3=activation3, model__init_mode = init_mode,
                   model__nodes1=nodes1, model__nodes2=nodes2, model__nodes3=nodes3, epochs=epochs,
                   batch_size=batch_size, optimizer=optimizer, optimizer__learning_rate=learning_rate)
 
