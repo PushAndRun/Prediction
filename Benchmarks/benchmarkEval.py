@@ -753,6 +753,8 @@ print("Overall job duration in ms:")
 print(movingQ21['job_execution_time'].describe())
 print()
 
+dataset = dataset.query('total_execution_time < 300000')
+dataset['total_execution_time']=dataset['total_execution_time']/1000
 dataset.hist(['total_execution_time'], bins=50)
 plt.title('Total Execution Time Histogram')
 plt.xlabel('Seconds')

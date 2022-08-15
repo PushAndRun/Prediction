@@ -69,12 +69,12 @@ dataset = dataset.dropna()
 dataset['total_execution_time'] = round(dataset['total_execution_time'] / 1000000000, 0)
 
 # convert categorical variables
-#dataset['map_complexity'] = dataset['map_complexity'].map({'1': 'MC_Eeasy', '2': 'MC_Medium', '3': 'MC_High'})
-#dataset['reduce_complexity'] = dataset['reduce_complexity'].map({'1': 'RC_Eeasy', '2': 'RC_Medium', '3': 'RC_High'})
-dataset['phase'] = dataset['phase'].map({'0': 'Map', '1': 'Reduce'})
+# dataset['map_complexity'] = dataset['map_complexity'].map({1: 'MC_Eeasy', 2: 'MC_Medium', 3: 'MC_High'})
+# dataset['reduce_complexity'] = dataset['reduce_complexity'].map({1: 'RC_Eeasy', 2: 'RC_Medium', 3: 'RC_High'})
+dataset['phase'] = dataset['phase'].map({0: 'Map', 1: 'Reduce'})
 
-#dataset = pd.get_dummies(dataset, columns=['map_complexity'], dtype=int, prefix='', prefix_sep='')
-#dataset = pd.get_dummies(dataset, columns=['reduce_complexity'], dtype=int, prefix='', prefix_sep='')
+# dataset = pd.get_dummies(dataset, columns=['map_complexity'], dtype=int, prefix='', prefix_sep='')
+# dataset = pd.get_dummies(dataset, columns=['reduce_complexity'], dtype=int, prefix='', prefix_sep='')
 dataset = pd.get_dummies(dataset, columns=['phase'], dtype=int, prefix='', prefix_sep='')
 
 # drop na values
@@ -85,6 +85,8 @@ dataset = dataset.sample(frac=1)
 dataset = dataset.sample(frac=1)
 dataset = dataset.sample(frac=1)
 
+print(dataset.columns)
+
 X = dataset.copy().drop(['total_execution_time'], axis=1)
 y = dataset['total_execution_time']
 
@@ -92,7 +94,7 @@ print(X.tail())
 print(y.tail())
 
 # Normalize and create normalize layer
-normalizerX = tf.keras.layers.Normalization(axis=-1)
+normalizerX = tf.keras.layers.Normalization(axis=-1, name="inputLayer")
 normalizerX.adapt(X)
 
 # split data
@@ -106,26 +108,30 @@ now = datetime.now()
 current_time = now.strftime("%H:%M:%S")
 print("Current Time =", current_time)
 
+
 # fix random seed for reproducibility
 # seed = 7
 # tf.random.set_seed(seed)
 
 # Build model
-def create_model(activation='relu', nodes1=128, nodes2=256, nodes3=256, init_mode='lecun_uniform'):  # optimizer='adam' layers=2,
-    model = tf.keras.Sequential([normalizerX])
-    model.add(tf.keras.layers.Dense(nodes1, activation=activation, kernel_initializer=init_mode)) #input_dim=9
-    model.add(tf.keras.layers.Dense(nodes2, activation=activation, kernel_initializer=init_mode))
-    model.add(tf.keras.layers.Dense(nodes3, activation=activation, kernel_initializer=init_mode))
+def create_model(activation='relu', nodes1=128, nodes2=256, nodes3=256,
+                 init_mode='lecun_uniform'):  # optimizer='adam' layers=2,
+    model = tf.keras.Sequential([
+        normalizerX,
+        keras.layers.Dense(nodes1, activation=activation, kernel_initializer=init_mode),  # input_dim=9
+        keras.layers.Dense(nodes2, activation=activation, kernel_initializer=init_mode),
+        keras.layers.Dense(nodes3, activation=activation, kernel_initializer=init_mode)])
 
-    model.add(tf.keras.layers.Dense(1))
+    model.add(tf.keras.layers.Dense(1, name="inferenceLayer"))
 
     model.compile(loss="mean_squared_logarithmic_error", metrics=["mean_absolute_error", 'mean_squared_error'])
 
     return model
 
-dnn_model=create_model()
 
-history=dnn_model.fit(X_train, y_train, validation_data=(X_test, y_test), epochs=10, verbose=0)
+dnn_model = create_model()
+
+history = dnn_model.fit(X_train, y_train, validation_data=(X_test, y_test), epochs=1, verbose=1)
 
 now = datetime.now()
 
@@ -139,10 +145,10 @@ pyplot.plot(history.history['val_loss'], label='test')
 pyplot.legend()
 pyplot.show()
 
+print([n.name for n in dnn_model.as_graph_def().node])
 
-
-#save the model
-builder = tf.compat.v1.saved_model.builder.SavedModelBuilder("PollingDNN")
+# save the model
+builder = tf.saved_model.builder.SavedModelBuilder("Test")
 builder.add_meta_graph_and_variables(sess, ["DNNv1"])
 builder.save()
 sess.close()

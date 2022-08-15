@@ -57,7 +57,7 @@ raw_dataset = raw_dataset.drop(
      'function_start_latency',
      'function_execution_duration', 'poll_latency', 'number_of_premature_polls', 'function_execution_start',
      'function_execution_end', 'final_poll_time', 'completed', 'failed', 'tpch_query_id', 'polling_strategy', 'backend',
-     'cache_type', 'job_execution_time', 'experiment_note', 'map_complexity', 'reduce_complexity'], axis=1)
+     'cache_type', 'job_execution_time', 'experiment_note', 'map_complexity','reduce_complexity'], axis=1)
 
 dataset = raw_dataset.copy()
 dataset = dataset.dropna()
@@ -65,9 +65,9 @@ dataset = dataset.dropna()
 dataset['total_execution_time'] = round(dataset['total_execution_time'] / 1000000000, 0)
 
 # convert categorical variables
-#dataset['map_complexity'] = dataset['map_complexity'].map({'1': 'MC_Eeasy', '2': 'MC_Medium', '3': 'MC_High'})
-#dataset['reduce_complexity'] = dataset['reduce_complexity'].map({'1': 'RC_Eeasy', '2': 'RC_Medium', '3': 'RC_High'})
-dataset['phase'] = dataset['phase'].map({'0': 'Map', '1': 'Reduce'})
+#dataset['map_complexity'] = dataset['map_complexity'].map({1: 'MC_Eeasy', 2: 'MC_Medium', 3: 'MC_High'})
+#dataset['reduce_complexity'] = dataset['reduce_complexity'].map({1: 'RC_Eeasy', 2: 'RC_Medium', 3: 'RC_High'})
+dataset['phase'] = dataset['phase'].map({0: 'Map', 1: 'Reduce'})
 
 #dataset = pd.get_dummies(dataset, columns=['map_complexity'], dtype=int, prefix='', prefix_sep='')
 #dataset = pd.get_dummies(dataset, columns=['reduce_complexity'], dtype=int, prefix='', prefix_sep='')
